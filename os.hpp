@@ -28,7 +28,7 @@ bool pin_to_core(int core_id) {
         std::cerr << "Failed to set CPU affinity.\n";
         return false;
     }
-    else std::cout << "Pinned to core " << core_id << " successfully.\n";
+
 #else
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -37,64 +37,105 @@ bool pin_to_core(int core_id) {
         std::cerr << "Failed to set CPU affinity.\n";
         return false;
     }
-    else std::cout << "Pinned to core " << core_id << " successfully.\n";
 #endif
     return true;
 }
 
-// Get L1 cache size and associativity for a given core
-std::pair<int, int> get_L1_cache_info(int core_id) {
-    int size_bytes;
-    int associativity;
+// Get L1 cache size
+int get_L1_cache_size(int core_id) {
 #ifdef _WIN32
     SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX buffer[128];
     DWORD len = sizeof(buffer);
 
     if (!GetLogicalProcessorInformationEx(RelationCache, buffer, &len)) {
         std::cerr << "Failed to get cache info.\n";
-        return {-1, -1};
+        return -1;
     }
 
     for (BYTE *ptr = reinterpret_cast<BYTE *>(buffer); ptr < reinterpret_cast<BYTE *>(buffer) + len;) {
         SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info = reinterpret_cast<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *>(ptr);
         if (info->Relationship == RelationCache && info->Cache.Level == 1) {
-            return {info->Cache.CacheSize, info->Cache.Associativity};
+            return info->Cache.CacheSize;
         }
         ptr += info->Size;
     }
-
-    return {-1, -1};
+    return -1;
 #else
-    // Read cache size
-    std::string size_path = "/sys/devices/system/cpu/cpu" + std::to_string(core_id) + "/cache/index0/size";
-    std::ifstream size_file(size_path);
+    std::string path = "/sys/devices/system/cpu/cpu" + std::to_string(core_id) + "/cache/index0/size";
+    std::ifstream file(path);
     int size_kb = -1;
-    if (size_file.is_open()) {
-        std::string size_str;
-        size_file >> size_str;
-        size_file.close();
-
-        try {
-            size_kb = std::stoi(size_str);
-        } catch (...) {
-            std::cerr << "Failed to parse cache size.\n";
-        }
+    if (file.is_open()) {
+        file >> size_kb;
+        file.close();
     } else {
         std::cerr << "Failed to read cache size.\n";
     }
-    size_bytes = (size_kb != -1) ? size_kb * 1024 : -1; // Convert KB to bytes
+    return size_kb * 1024;
+#endif
+}
 
-    // Read associativity
-    std::string assoc_path = "/sys/devices/system/cpu/cpu" + std::to_string(core_id) + "/cache/index0/ways_of_associativity";
-    std::ifstream assoc_file(assoc_path);
-    if (assoc_file.is_open()) {
-        assoc_file >> associativity;
-        assoc_file.close();
-    } else {
-        std::cerr << "Failed to read cache associativity.\n";
-        associativity = -1;
+// Get L1 cache associativity
+int get_L1_cache_associativity(int core_id) {
+#ifdef _WIN32
+    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX buffer[128];
+    DWORD len = sizeof(buffer);
+
+    if (!GetLogicalProcessorInformationEx(RelationCache, buffer, &len)) {
+        std::cerr << "Failed to get cache info.\n";
+        return -1;
     }
 
-    return {size_bytes, associativity};
+    for (BYTE *ptr = reinterpret_cast<BYTE *>(buffer); ptr < reinterpret_cast<BYTE *>(buffer) + len;) {
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info = reinterpret_cast<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *>(ptr);
+        if (info->Relationship == RelationCache && info->Cache.Level == 1) {
+            return info->Cache.Associativity;
+        }
+        ptr += info->Size;
+    }
+    return -1;
+#else
+    std::string path = "/sys/devices/system/cpu/cpu" + std::to_string(core_id) + "/cache/index0/ways_of_associativity";
+    std::ifstream file(path);
+    int associativity = -1;
+    if (file.is_open()) {
+        file >> associativity;
+        file.close();
+    } else {
+        std::cerr << "Failed to read cache associativity.\n";
+    }
+    return associativity;
+#endif
+}
+
+// Get L1 cache line size
+int get_L1_cache_line_size(int core_id) {
+#ifdef _WIN32
+    SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX buffer[128];
+    DWORD len = sizeof(buffer);
+
+    if (!GetLogicalProcessorInformationEx(RelationCache, buffer, &len)) {
+        std::cerr << "Failed to get cache info.\n";
+        return -1;
+    }
+
+    for (BYTE *ptr = reinterpret_cast<BYTE *>(buffer); ptr < reinterpret_cast<BYTE *>(buffer) + len;) {
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info = reinterpret_cast<SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *>(ptr);
+        if (info->Relationship == RelationCache && info->Cache.Level == 1) {
+            return info->Cache.LineSize;
+        }
+        ptr += info->Size;
+    }
+    return -1;
+#else
+    std::string path = "/sys/devices/system/cpu/cpu" + std::to_string(core_id) + "/cache/index0/coherency_line_size";
+    std::ifstream file(path);
+    int line_size = -1;
+    if (file.is_open()) {
+        file >> line_size;
+        file.close();
+    } else {
+        std::cerr << "Failed to read cache line size.\n";
+    }
+    return line_size;
 #endif
 }

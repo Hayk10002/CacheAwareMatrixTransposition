@@ -7,6 +7,9 @@
 
 #include "os.hpp"
 
+#undef min
+#undef max
+
 int generateRandomNumber(int min = 0, int max = 100) {
     static std::random_device rd;
     static std::mt19937 gen(rd());

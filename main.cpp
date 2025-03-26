@@ -3,6 +3,7 @@
 #include <optional>
 #include <numeric>
 #include <chrono>
+#include <span>
 
 #include "os.hpp"
 

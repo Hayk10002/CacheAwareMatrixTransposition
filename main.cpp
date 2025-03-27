@@ -3,8 +3,12 @@
 #include <optional>
 #include <numeric>
 #include <chrono>
+#include <span>
 
 #include "os.hpp"
+
+#undef min
+#undef max
 
 int generateRandomNumber(int min = 0, int max = 100) {
     static std::random_device rd;
@@ -23,7 +27,7 @@ bool setup(int& l1_cache_size, int& associativity, int& cache_line_size)
     associativity = get_L1_cache_associativity(core_id);
     cache_line_size = get_L1_cache_line_size(core_id); 
 
-    if (l1_cache_size == -1 || associativity == -1 || cache_line_size == -1) return S_FALSE;
+    if (l1_cache_size == -1 || associativity == -1 || cache_line_size == -1) return false;
     
     std::cout << "L1 Cache Size for Core " << core_id << ": " << l1_cache_size / 1024 << " KB\n";
     std::cout << "Cache-line size: " << cache_line_size << "\n";

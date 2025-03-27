@@ -31,7 +31,7 @@ $ your/path/to/exe/main.exe {matrix_size} {iteration_count}
 ```
 
 ## Possible Output
-(for vector size 2048 and iteration count 100)
+(for matrix size 2048 and iteration count 100)
 
 ```
 Process started on Core ID: 4
